@@ -4,8 +4,8 @@ from glob import glob
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import numpy as np
-from os import environ, path
-import os
+from os import environ, path, makedirs
+import sys
 import pandas as pd
 import time
 
@@ -17,9 +17,16 @@ def parse_arguments() -> dict:
     )
 
     arg_parser.add_argument(
-        "--base-data-dir",
+        "--data-dir",
         help="directory to consistently store recorded data. Defaults to $HOME/msb_data",
-        default=path.join(os.environ["HOME"], "msb_processed"),
+        default=path.join(environ["HOME"], "msb_processed"),
+        type=str,
+    )
+
+    arg_parser.add_argument(
+        "--results-dir",
+        help="directory to consistently store recorded data. Defaults to $HOME/msb_data",
+        default=path.join(environ["HOME"], path.join("msb_results", "24h-report")),
         type=str,
     )
 
@@ -42,7 +49,7 @@ def find_time_files(
 
     files = list()
 
-    for file in glob(path.join(file_dir, file_pattern)):
+    for file in sorted(glob(path.join(file_dir, file_pattern))):
         timestamp = datetime.fromisoformat(file.split("_")[-1].split(".")[0])
         if verbose:
             print(f"timestamp: {timestamp}")
@@ -57,18 +64,41 @@ def find_time_files(
     return files
     
 
-def sanitize_data(data : pd.DataFrame):
-    pass
+def sanitize_data(data : pd.DataFrame, verbose : bool = False):
 
+    if data.empty:
+        print("empty dataframe, skipping!")
+        return pd.DataFrame()
+
+    if verbose: print("cleaning NaNs")
+    data.fillna(method="ffill", inplace=True)
+
+    if verbose: print("dropping duplicate indices")
+    data = data.loc[~data.index.duplicated(keep='first')] 
 
 def read_data(files : list) -> pd.DataFrame:
     data = list()
     for file in files:
-        data.append(pd.read_csv(file))
+
+        tmp = pd.read_csv(file)
+
+        try:
+            set_index(tmp)
+        except Exception as e:
+            print(f'failed to set index: {e} skipping')
+            continue
+
+        try:
+            sanitize_data(tmp)
+        except Exception as e:
+            print(f'failed to sanitize data: {e} skipping')
+            continue
+        
+        data.append(tmp)
     
     return pd.concat(data)
 
-def set_index(data : pd.DataFrame, verbose : bool = False) -> pd.DataFrame:
+def set_index(data : pd.DataFrame, verbose : bool = False):
     data.epoch = pd.to_datetime(data.epoch, unit='s', utc=True)
     data.set_index('epoch', inplace=True)
     if verbose: print(f'{data.info()}')
@@ -144,10 +174,7 @@ def get_msb_dataset(
         return pd.DataFrame()
 
     data = read_data(files)
-
-    set_index(data)
-
-    sanitize_data(data)
+    data.sort_index(inplace=True)
 
     return data
 
@@ -196,38 +223,58 @@ def main():
     now = datetime.fromtimestamp(time.time(), timezone.utc)
     begin = now - timedelta(hours=config["report_time_window"])
 
+    if config['verbose']: print(f'postprocess measurements in interval: {begin} -> {now}')
+
+    if not path.isdir(config['data_dir']):
+        print(f'not a directory: {config["data_dir"]}')
+        sys.exit(-1)
+
+    if not path.isdir(config['results_dir']):
+        try:
+            makedirs(config['results_dir'], exist_ok=True)
+        except Exception as e:
+            print(f'failed to create directory: {e}')
+            sys.exit(-1)
+
     # iterate over available data directories
-    for msb in glob(path.join(config['base_data_dir'], 'MSB-????-A')):
+    for msb in glob(path.join(config['data_dir'], 'MSB-????-A')):
     # for msb in glob(path.join('/tmp/test/', 'MSB-????-A')):
 
         msb_name = path.basename(msb)
 
-        print(f'processing imu {msb}')
+        if config['verbose']: print(f'processing imu {msb}')
 
         imu_data = get_msb_dataset(data_dir=msb, begin=begin, end=now, data_type="imu")
+
+
         if imu_data.empty:
+            if config['verbose']: print(f'did not find any measurements, skipping')
             continue
 
         if config['verbose'] : print(f'{imu_data.info()}')
 
         calc_abs_acc(imu_data)
         block_maxima_acc = calc_block_maxima(imu_data)
-        plot_block_maxima(imu_data, block_maxima_acc, save_fig=f'/tmp/{msb_name}_acc_max_block.png')
+        plot_block_maxima(imu_data, block_maxima_acc, save_fig=path.join(config["results_dir"], f'{msb_name}_acc_max_block_{now}.png'))
 
-    for msb in glob(path.join(config['base_data_dir'], 'MSB-????-A')):
+    for msb in glob(path.join(config['data_dir'], 'MSB-????-A')):
     # for msb in glob(path.join('/tmp/test/', 'MSB-????-A')):
 
         msb_name = path.basename(msb)
 
-        print(f'processing gps {msb}')
+        if config['verbose']: print(f'processing gps {msb}')
 
         gps_data = get_msb_dataset(data_dir=msb, begin=begin, end=now, data_type='gps')
+
+        # if there is no fix, then lat or lon are 0
+        if config['verbose']: print('dropping rows with no ')
+        gps_data = gps_data[gps_data.lat != 0]
 
         if gps_data.empty:
             continue
               
         # build gps maps
-        plot_track(track=gps_data, save_fig=f'/tmp/{msb_name}_gps.png') 
+        plot_track(track=gps_data, save_fig=path.join(config["results_dir"], f'{msb_name}_gps_{now}.png')) 
 
 
 if __name__ == "__main__":
