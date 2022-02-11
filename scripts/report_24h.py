@@ -76,7 +76,7 @@ def set_index(data : pd.DataFrame, verbose : bool = False) -> pd.DataFrame:
 def plot_track(
     track : pd.DataFrame, 
     margin = 2, 
-    figsize=(9,9), 
+    figsize=(16,9), 
     save_fig = None, 
     verbose = False, 
     transparent = True
@@ -181,8 +181,8 @@ def calc_block_maxima(data : pd.DataFrame, resample_interval : str = '10min') ->
         index = t_i
     )
 
-def plot_block_maxima(data : pd.DataFrame, acc_max_block : pd.DataFrame, save_fig = None, transparent = False):
-    plt.figure()
+def plot_block_maxima(data : pd.DataFrame, acc_max_block : pd.DataFrame, save_fig = None, transparent = False, figsize=(16,9)):
+    plt.figure(figsize=figsize)
     data.acc_abs.plot(label="acc_abs")
     # block_max_acc_abs.scatter(label='10 min maxima')
     plt.scatter(acc_max_block.max_acc_block_i, acc_max_block.max_acc_block, marker="x", color="tab:orange")
@@ -207,6 +207,9 @@ def main():
         imu_data = get_msb_dataset(data_dir=msb, begin=begin, end=now, data_type="imu")
         if imu_data.empty:
             continue
+
+        if config['verbose'] : print(f'{imu_data.info()}')
+
         calc_abs_acc(imu_data)
         block_maxima_acc = calc_block_maxima(imu_data)
         plot_block_maxima(imu_data, block_maxima_acc, save_fig=f'/tmp/{msb_name}_acc_max_block.png')
