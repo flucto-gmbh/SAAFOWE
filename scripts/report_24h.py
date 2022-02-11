@@ -130,7 +130,7 @@ def plot_track(
 def get_msb_dataset(
     data_dir : str,
     begin : datetime,
-    end : DateTime,
+    end : datetime,
     data_type : str = 'imu',
 ) -> pd.DataFrame:
 
