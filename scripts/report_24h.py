@@ -1,6 +1,7 @@
 import argparse
 from datetime import datetime, timezone, timedelta
 from glob import glob
+from click import DateTime
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import numpy as np
@@ -8,9 +9,6 @@ from os import environ, path
 import os
 import pandas as pd
 import time
-
-from soupsieve import match
-
 
 def parse_arguments() -> dict:
     arg_parser = argparse.ArgumentParser()
@@ -35,77 +33,47 @@ def parse_arguments() -> dict:
 
     return arg_parser.parse_args().__dict__
 
-
-def match_time_files(
-    data_dir: str,
-    data_type: str = "imu",
+def find_time_files(
+    file_dir : str,
+    file_pattern : str = "*.csv",
     begin: datetime = datetime.fromisoformat("1970-01-01T00:00:00+00:00"),
     end: datetime = datetime.fromtimestamp(time.time(), timezone.utc),
-    msb_pattern: str = "MSB-????-A",
-    file_pattern: str = "*.csv",
-    verbose: bool = True,
-) -> dict:
+    verbose=False
+) -> list :
 
-    msb_files = dict()
+    files = list()
 
-    if verbose:
-        print(f"processing all file in available between {begin} - {end}")
-
-    for msb_available in glob(path.join(data_dir, msb_pattern)):
-
+    for file in glob(path.join(file_dir, file_pattern)):
+        timestamp = datetime.fromisoformat(file.split("_")[-1].split(".")[0])
         if verbose:
-            print(f"processing {msb_available}")
-        msb_name = path.basename(msb_available)
-        msb_files[msb_name] = list()
-
-        for msb_file in glob(
-            path.join(path.join(msb_available, data_type), file_pattern)
-        ):
-            timestamp = datetime.fromisoformat(msb_file.split("_")[-1].split(".")[0])
-
+            print(f"timestamp: {timestamp}")
+        if begin <= timestamp <= end:
             if verbose:
-                print(f"timestamp: {timestamp}")
-
-            if begin <= timestamp <= end:
-                if verbose:
-                    print(f"matching file: {msb_file}")
-                msb_files[msb_name].append(msb_file)
-                continue
-            if verbose:
-                print(f"skipping: {msb_file}")
-
-    return msb_files
+                print(f"matching file: {file}")
+            files.append(file)
+            continue
+        if verbose:
+            print(f"skipping: {file}")
+    
+    return files
+    
 
 def sanitize_data(data : pd.DataFrame):
+    pass
+
+
+def read_data(files : list) -> pd.DataFrame:
+    data = list()
+    for file in files:
+        data.append(pd.read_csv(file))
+    
+    return pd.concat(data)
+
+def set_index(data : pd.DataFrame, verbose : bool = False) -> pd.DataFrame:
     data.epoch = pd.to_datetime(data.epoch, unit='s', utc=True)
     data.set_index('epoch', inplace=True)
+    if verbose: print(f'{data.info()}')
 
-def read_data(msb_files : dict) -> dict :
-
-    data = dict()
-
-    for msb, files in msb_files.items():
-        print(f"processing: {msb}")
-        if not files:
-            continue
-        data[msb] = list()
-
-        for data_file in files:
-
-            print(f"processing: {data_file}")
-            data[msb].append(pd.read_csv(data_file))
-        
-        data[msb] = pd.concat(data[msb]
-        )
-    
-    return data
-
-def set_index(msb_data : dict, verbose=False) -> dict:
-    for _, data in msb_data.items():
-        data.epoch = pd.to_datetime(data.epoch, unit='s', utc=True)
-        data.set_index('epoch', inplace=True)
-        if verbose: print(f'{data.info()}')
- 
 def plot_track(
     track : pd.DataFrame, 
     margin = 2, 
@@ -160,6 +128,68 @@ def plot_track(
     if not save_fig:
         plt.show()
 
+def get_msb_dataset(
+    data_dir : str,
+    begin : datetime,
+    end : DateTime,
+    data_type : str = 'imu',
+) -> pd.DataFrame:
+
+    files = find_time_files(
+        file_dir=path.join(data_dir, data_type),
+        begin=begin,
+        end=end,
+    )
+
+    if not files:
+        return pd.DataFrame()
+
+    data = read_data(files)
+
+    set_index(data)
+
+    sanitize_data(data)
+
+    return data
+
+def calc_abs_acc(data : pd.DataFrame):
+    data.insert(loc=3, column='acc_abs', value=(
+       np.sqrt(
+           np.power(data.acc_x, 2) +
+           np.power(data.acc_y, 2) +
+           np.power(data.acc_z, 2) 
+       )
+    ))
+
+def calc_block_maxima(data : pd.DataFrame, resample_interval : str = '10min') -> pd.DataFrame:
+
+    t_i = list() 
+    max_acc_abs = list()
+    max_acc_abs_i = list()
+
+    for t, d in data.acc_abs.resample(resample_interval):
+        if d.empty:
+            continue
+        max_acc_abs.append(d.max())
+        max_acc_abs_i.append(d.idxmax())
+        t_i.append(t)
+
+    return pd.DataFrame(
+        {
+            'max_acc_block_i' : max_acc_abs_i,
+            'max_acc_block' : max_acc_abs,
+        },
+        index = t_i
+    )
+
+def plot_block_maxima(data : pd.DataFrame, acc_max_block : pd.DataFrame, save_fig = None, transparent = False):
+    plt.figure()
+    data.acc_abs.plot(label="acc_abs")
+    # block_max_acc_abs.scatter(label='10 min maxima')
+    plt.scatter(acc_max_block.max_acc_block_i, acc_max_block.max_acc_block, marker="x", color="tab:orange")
+    if save_fig:
+        plt.savefig(save_fig, dpi=150)
+
 def main():
 
     config = parse_arguments()
@@ -167,49 +197,35 @@ def main():
     now = datetime.fromtimestamp(time.time(), timezone.utc)
     begin = now - timedelta(hours=config["report_time_window"])
 
-    msb_imu_files = match_time_files(
-        data_dir=config['base_data_dir'], begin=begin, end=now, verbose=True
-    )
+    # iterate over available data directories
+    for msb in glob(path.join(config['base_data_dir'], 'MSB-????-A')):
+    # for msb in glob(path.join('/tmp/test/', 'MSB-????-A')):
 
-    msb_gps_files = match_time_files(
-        config['base_data_dir'], data_type="gps", begin=begin, end=now, verbose=True,
-    )
+        msb_name = path.basename(msb)
 
-    msb_imu_data = read_data(msb_imu_files)
-    imu_gps_data = read_data(msb_gps_files)
+        print(f'processing imu {msb}')
 
-    set_index(msb_imu_data)
-    set_index(imu_gps_data)
+        imu_data = get_msb_dataset(data_dir=msb, begin=begin, end=now, data_type="imu")
+        if imu_data.empty:
+            continue
+        calc_abs_acc(imu_data)
+        block_maxima_acc = calc_block_maxima(imu_data)
+        plot_block_maxima(imu_data, block_maxima_acc, save_fig=f'/tmp/{msb_name}_acc_max_block.png')
 
-    # build block maxima
-    for msb, data in msb_imu_data.items():
+    for msb in glob(path.join(config['base_data_dir'], 'MSB-????-A')):
+    # for msb in glob(path.join('/tmp/test/', 'MSB-????-A')):
 
-        max_acc_abs = list()
-        max_acc_abs_i = list()
-       
-        data.insert(loc=3, column='acc_abs', value=(
-            np.sqrt(
-                np.power(data.acc_x, 2) +
-                np.power(data.acc_y, 2) +
-                np.power(data.acc_z, 2) 
-            )
-        ))
+        msb_name = path.basename(msb)
 
-        for t, d in data.acc_abs.resample("10min"):
-            if d.empty:
-                continue
-            max_acc_abs.append(d.max())
-            max_acc_abs_i.append(d.idxmax())
+        print(f'processing gps {msb}')
 
-        plt.figure()
-        data.acc_abs.plot(label="acc_abs")
-        # block_max_acc_abs.scatter(label='10 min maxima')
-        plt.scatter(max_acc_abs_i, max_acc_abs, marker="x", color="tab:orange")
-        plt.savefig(f"/tmp/{msb}_blockmaxima.png", dpi=150)
+        gps_data = get_msb_dataset(data_dir=msb, begin=begin, end=now, data_type='gps')
 
-    # build gps maps
-    for msb, data in imu_gps_data.items():
-        plot_track(track=data, save_fig=f'/tmp/{msb}_gps.png') 
+        if gps_data.empty:
+            continue
+              
+        # build gps maps
+        plot_track(track=gps_data, save_fig=f'/tmp/{msb_name}_gps.png') 
 
 
 if __name__ == "__main__":
