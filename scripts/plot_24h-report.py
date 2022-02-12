@@ -316,8 +316,11 @@ def main():
             sys.exit(-1)
 
     output_dir = path.join(config['results_dir'], now_string)
+
+    if config['verbose']: print(f'output dir: {output_dir}')
+
     try:
-        makedirs(output_dir, exist_ok=False)
+        makedirs(output_dir, exist_ok=True)
     except Exception as e:
         print(f'failed to create directory: {output_dir}')
         sys.exit(-1)
@@ -350,7 +353,9 @@ def main():
         block_maxima_acc = calc_block_maxima(imu_data, verbose=config["verbose"])
 
         # create specifc output dir for the current msb
-        msb_output_dir = path.join(output_dir, msb)
+        msb_output_dir = path.join(output_dir, msb_name)
+
+        if config['verbose']: print(msb_output_dir)
         try:
             makedirs(msb_output_dir, exist_ok=False)
         except Exception as e:
@@ -385,15 +390,15 @@ def main():
             print(f'{gps_data.info()}')
 
         # create specifc output dir for the current msb
-        msb_output_dir = path.join(output_dir, msb)
+        msb_output_dir = path.join(output_dir, msb_name)
         try:
-            makedirs(msb_output_dir, exist_ok=False)
+            makedirs(msb_output_dir, exist_ok=True)
         except Exception as e:
             print(f'failed to create directory: {msb_output_dir}: {e}')
             sys.exit(-1)
 
         if gps_data.empty:
-            if config['verbose']: print('no gps tracks availab;e')
+            if config['verbose']: print('no gps tracks available')
             plot_empty_track(
                 save_fig=path.join(msb_output_dir, f"{msb_name}_gps_{now_string}.png")
             )
