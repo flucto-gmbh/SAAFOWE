@@ -82,8 +82,12 @@ def sanitize_data(data: pd.DataFrame, verbose: bool = False):
     data = data.loc[~data.index.duplicated(keep="first")]
 
 
-def read_data(files: list) -> pd.DataFrame:
+def read_data(files: list, verbose=False) -> pd.DataFrame:
     data = list()
+
+    if verbose:
+        print(f'processing {len(files)} data files')
+
     for file in files:
 
         tmp = pd.read_csv(file)
@@ -207,7 +211,7 @@ def get_msb_dataset(
 
     if verbose: print(f'found {len(files)} data files')
 
-    data = read_data(files)
+    data = read_data(files, verbose=config['verbose'])
     data.sort_index(inplace=True)
 
     return data
