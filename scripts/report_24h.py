@@ -211,7 +211,7 @@ def get_msb_dataset(
 
     if verbose: print(f'found {len(files)} data files')
 
-    data = read_data(files, verbose=config['verbose'])
+    data = read_data(files, verbose=verbose)
     data.sort_index(inplace=True)
 
     return data
