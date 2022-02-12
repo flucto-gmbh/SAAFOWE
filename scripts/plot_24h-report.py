@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 from datetime import datetime, timezone, timedelta
 from glob import glob
@@ -70,12 +72,13 @@ def find_time_files(
 def sanitize_data(data: pd.DataFrame, verbose: bool = False):
 
     if data.empty:
-        print("empty dataframe, skipping!")
-        return pd.DataFrame()
+        raise Exception("empty dataframe")
 
     if verbose:
         print("cleaning NaNs")
-    data.fillna(method="ffill", inplace=True)
+
+    # data.fillna(method="ffill", inplace=True)
+    data.dropna(inplace=True)
 
     if verbose:
         print("dropping duplicate indices")
@@ -110,6 +113,9 @@ def read_data(files: list, verbose=False) -> pd.DataFrame:
 
 
 def set_index(data: pd.DataFrame, verbose: bool = False):
+    if data.empty:
+        raise Exception("empty DataFrame")
+
     data.epoch = pd.to_datetime(data.epoch, unit="s", utc=True)
     data.set_index("epoch", inplace=True)
     if verbose:
@@ -291,6 +297,7 @@ def main():
 
     now = datetime.fromtimestamp(time.time(), timezone.utc)
     now_string = now.strftime('%Y%m%dT%H%M%S%z')
+
     # now_string = now.__str__().replace(':', '').replace('-','')
     begin = now - timedelta(hours=config["report_time_window"])
 
@@ -308,9 +315,15 @@ def main():
             print(f"failed to create directory: {e}")
             sys.exit(-1)
 
+    output_dir = path.join(config['results_dir'], now_string)
+    try:
+        makedirs(output_dir, exist_ok=False)
+    except Exception as e:
+        print(f'failed to create directory: {output_dir}')
+        sys.exit(-1)
+
     # iterate over available data directories
     for msb in glob(path.join(config["data_dir"], "MSB-????-A")):
-        # for msb in glob(path.join('/tmp/test/', 'MSB-????-A')):
 
         msb_name = path.basename(msb)
 
@@ -339,13 +352,12 @@ def main():
             imu_data,
             block_maxima_acc,
             save_fig=path.join(
-                config["results_dir"], f"{msb_name}_acc-max-block_{now_string}.png"
+                output_dir, f"{msb_name}_acc-max-block_{now_string}.png"
             ),
             verbose=config["verbose"],
         )
 
     for msb in glob(path.join(config["data_dir"], "MSB-????-A")):
-        # for msb in glob(path.join('/tmp/test/', 'MSB-????-A')):
 
         msb_name = path.basename(msb)
 
@@ -354,23 +366,28 @@ def main():
 
         gps_data = get_msb_dataset(data_dir=msb, begin=begin, end=now, data_type="gps")
 
-        # if there is no fix, then lat or lon are 0
+            # if there is no fix, then lat or lon are 0
         if config["verbose"]:
-            print("dropping rows with no ")
+            print("dropping rows with no lat/lon data")
         gps_data = gps_data[gps_data.lat != 0]
+    
+
+        if config['verbose']:
+            print(f'{gps_data.info()}')
+
 
         if gps_data.empty:
+            if config['verbose']: print('no gps tracks availab;e')
             plot_empty_track(
-                save_fig=path.join(config["results_dir"], f"{msb_name}_gps_{now_string}.png")
+                save_fig=path.join(output_dir, f"{msb_name}_gps_{now_string}.png")
             )
             continue
 
         # build gps maps
         plot_track(
             track=gps_data,
-            save_fig=path.join(config["results_dir"], f"{msb_name}_gps_{now_string}.png"),
+            save_fig=path.join(output_dir, f"{msb_name}_gps_{now_string}.png"),
         )
-
 
 if __name__ == "__main__":
     main()
