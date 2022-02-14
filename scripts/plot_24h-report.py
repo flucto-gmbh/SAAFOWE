@@ -122,7 +122,7 @@ def set_index(data: pd.DataFrame, verbose: bool = False):
         print(f"{data.info()}")
 
 def plot_empty_track(figsize=(16,9), save_fig=None, verbose=False):
-    fig = plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=tuple(i/2.54 for i in figsize))
 
     plt.text(
         x = 0.5,
@@ -132,8 +132,10 @@ def plot_empty_track(figsize=(16,9), save_fig=None, verbose=False):
         horizontalalignment='center',
     )
 
+    fig.tight_layout()
+
     if save_fig:
-        plt.savefig(save_fig, dpi=300)
+        plt.savefig(save_fig, dpi=150)
     else:
         plt.show()
 
@@ -148,7 +150,7 @@ def plot_track(
     transparent=True,
 ):
     # create new figure, axes instances.
-    fig = plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=tuple((i/2.54 for i in figsize)))
 
     if transparent:
         fig.patch.set_alpha(0)
@@ -191,7 +193,7 @@ def plot_track(
     fig.tight_layout()
 
     if save_fig:
-        plt.savefig(save_fig, dpi=300)
+        plt.savefig(save_fig, dpi=150)
     else:
         plt.show()
 
@@ -275,10 +277,10 @@ def plot_block_maxima(
     acc_max_block: pd.DataFrame,
     save_fig=None,
     transparent=False,
-    figsize=(16, 9),
+    figsize=(18, 9),
     verbose=False,
 ):
-    plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=tuple((i/2.54 for i in figsize)))
     data.acc_abs.plot(label="acc_abs")
     # block_max_acc_abs.scatter(label='10 min maxima')
     plt.scatter(
@@ -287,6 +289,7 @@ def plot_block_maxima(
         marker="x",
         color="tab:orange",
     )
+    fig.tight_layout()
     if save_fig:
         plt.savefig(save_fig, dpi=150)
 
@@ -366,9 +369,16 @@ def main():
             imu_data,
             block_maxima_acc,
             save_fig=path.join(
-                msb_output_dir, f"{msb_name}_acc-max-block_{now_string}.png"
+                msb_output_dir, f"{msb_name}_acc-max-block_{now_string}.jpg"
             ),
             verbose=config["verbose"],
+        )
+
+        block_maxima_acc.to_csv(
+            path.join(
+                msb_output_dir, f"{msb_name}_acc-max-block_{now_string}.csv"
+            ),
+            date_format = "%s",
         )
 
     for msb in glob(path.join(config["data_dir"], "MSB-????-A")):
@@ -400,15 +410,23 @@ def main():
         if gps_data.empty:
             if config['verbose']: print('no gps tracks available')
             plot_empty_track(
-                save_fig=path.join(msb_output_dir, f"{msb_name}_gps_{now_string}.png")
+                save_fig=path.join(msb_output_dir, f"{msb_name}_gps_{now_string}.jpg")
             )
             continue
 
         # build gps maps
         plot_track(
             track=gps_data,
-            save_fig=path.join(msb_output_dir, f"{msb_name}_gps_{now_string}.png"),
+            save_fig=path.join(msb_output_dir, f"{msb_name}_gps_{now_string}.jpg"),
         )
+
+        gps_data.to_csv(
+            path.join(
+                msb_output_dir, f"{msb_name}_gps_{now_string}.csv"
+            ),
+            date_format = "%s",
+        )
+
 
 if __name__ == "__main__":
     main()

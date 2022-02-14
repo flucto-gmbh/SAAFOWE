@@ -42,6 +42,6 @@ class PDF(FPDF):
         self.page_body(images)
 
 pdf = PDF()
-print('creatin pdf')
-pdf.print_page(['../tests/MSB-0022-A_gps.png', '../tests/MSB-0022-A_acc_max_block.png'])
+print('creating pdf')
+pdf.print_page(['../tests/gps.png', '../tests/imu.png'])
 pdf.output('../tests/flucto_24h_report.pdf', 'F')
