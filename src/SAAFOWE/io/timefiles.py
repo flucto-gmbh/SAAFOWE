@@ -4,8 +4,6 @@ from os import path
 import sys
 import time
 
-from anyio import current_time
-
 def find_time_files(
     file_dir: str,
     file_pattern: str = "*.csv",
@@ -30,24 +28,23 @@ def find_time_files(
 
     return files
 
-def calc_time_intervals(begin : datetime, end : datetime, interval : str = 'hour', ) -> list:
+def calc_time_intervals(begin : datetime, end : datetime, interval : str = 'hourly', ) -> list:
 
     timestamps = list()
     timestamps.append(begin)
     counter = 1
     interval_start = None
     current_timestamp = begin
-    
 
-    if interval == 'hour':
+    if interval == 'hourly':
         td = timedelta(hours=1)
         interval_start = datetime(year=begin.year, month=begin.month, day=begin.day, hour=begin.hour, tzinfo=begin.tzinfo)
-    elif interval == 'day':
+    elif interval == 'dayly':
         td = timedelta(hours=24)
         interval_start = datetime(year=begin.year, month=begin.month, day=begin.day, tzinfo=begin.tzinfo)
     #elif interval == 'week':
     #    td = timedelta(weeks=1)
-    elif interval == 'month':
+    elif interval == 'monthly':
         td = timedelta(weeks=4)
         interval_start = datetime(year=begin.year, month=begin.month, tzinfo=begin.tzinfo)
     else:
