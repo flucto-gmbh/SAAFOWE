@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, path.abspath(path.join(path.dirname(__file__), '../src')))
 
-from SAAFOWE.io.timefiles import find_time_files, calc_time_intervals
+from SAAFOWE.io.timefiles import * 
 
 AGGREGATE_INTERVALS = ["hourly", "daily", "monthly"]
 
@@ -20,64 +20,6 @@ def parse_cmdline() -> dict:
 
     return cmd_parser.parse_args().__dict__
 
-def get_filename_prefix(filepath : str, prefix : str, filename_sep : str = '_') -> str:
-    filename_without_timestamp = '_'.join(filepath.split(path.sep)[-1].split(filename_sep)[:-1])
-    return f'{prefix}_{filename_without_timestamp}'
-
-
-def get_filename_ending(filepath : str) -> str:
-    return filepath.split('.')[-1]
-
-
-def get_output_filepath(output_dir : str, filename_prefix : str, timestamp : datetime, filename_ending : str, filename_sep = "_", timestamp_fmt = '%Y-%m-%dT%H:%M:%S%z'):
-    assert path.isdir(output_dir), f'not a directory {output_dir}'
-    filename = filename_sep.join([filename_prefix, datetime.strftime(timestamp, timestamp_fmt)])
-    filename = f'{filename}.{filename_ending}'
-    return path.join(output_dir, filename)
-    
-
-def concat_files(output_filepath : str, files : list):
-    with open(output_filepath, 'a') as output_filehandle:
-        header_written = False
-        for file in files:
-            with open(file, 'r') as input_filehandle:
-                header = input_filehandle.readline()
-                if not header_written:
-                    output_filehandle.write(header)
-                    header_written = True
-                for line in input_filehandle:
-                    output_filehandle.write(line)
-
-
-def extract_timestamp(filename : str, filename_sep : str = '_', timestamp_pos : int = -1, timestamp_fmt : str = '%Y-%m-%dT%H:%M:%S%z') -> datetime:
-
-    """
-    extract_timestamp(filename : str, filename_sep = '_', timestamp_pos : int = -1 timestamp_fmt : str = '%Y-%m-%dT%T%z'):
-
-    filename      path to a file containing a valid timestamp in the file name
-    filename_sep  separator to separate metainformation in the filename. 
-                  Example: msb-0008-a_imu_2022-01-01T12:12:12+00:00.log 
-                  Here, the filename_sep is '_'
-    timestamp_pos absolute position of the timestamp in the file name. Defaults to -1, 
-                  referring to the last element in the file name
-    timestamp_fmt Format of the time stamp in the file name
-
-    
-    If the timestamp is extracted successfully, returns a tz-aware datetime object
-    If the timestamp cannot be extracted, return None
-
-    """
-    # timetamp_str = separate '/' & separate file ending & split by filename_sep and keep the timestamp_pos'th field
-    timestamp_str = filename.split(path.sep)[-1]
-    timestamp_str = timestamp_str.split('.')[0]
-    timestamp_str = timestamp_str.split(filename_sep)[timestamp_pos]
-    try:
-        timestamp = datetime.strptime(timestamp_str, timestamp_fmt)
-    except Exception as e:
-        print(f'failed to convert to timestamp: {timestamp_str} -> {e}')
-        return None
-    return timestamp
-
 def main():
     # parse command line arguments
     input_files = dict()
@@ -89,6 +31,15 @@ def main():
         print(f'config: {args}')
         print(f'sys.path: {sys.path}')
 
+    # there are two different ways of how the user can supply input files to the script:
+    # - via stdin (e.g. if piping from another program)
+    # - via command line parameters
+    # all non-specific command line parameters are captured by argparse in the 'input' field
+    # hence, checking the type of the input field will reveal where the input files are coming from
+    # 
+    # if the input field is of type list(), iterate over the list, check if the elements are 
+    # valid files, and if so: extract the time stamp from the file name, and store the file
+    # path in a dictionary, where the timestamp is the key to the filepath.
     if type(args['input']) == type(list()):
         if args['verbose']: print("using input files provided via command line")
         for f in args['input']:
@@ -99,6 +50,8 @@ def main():
             if ts:
                 if args['verbose']: print(f'found valid input file: {f}')
                 input_files[ts] = f
+    # if the input field is of type sys.stdin (_io.TextIOWrapper), 
+    # threat the input field like a file and iterate over each line
     elif type(args['input']) == type(sys.stdin):
         if args['verbose']: print("using input files provided via stdin")
         for line in args['input']:
@@ -107,10 +60,12 @@ def main():
                 if ts:
                     if args['verbose']: print(f'found valid input file: {f}')
                     input_files[ts] = f
-    # get the first and the last interval
+
+    # now, get the first and the last time stamp which is needed to calculate the range
+    # of the time interval over which the data in the files is to be aggregated.
     begin = sorted(input_files.keys())[0]
     end = sorted(input_files.keys())[-1]
-    # calculate intervals
+    # calculate intervals the actual intervals
     intervals = calc_time_intervals(begin=begin, end=end, interval=args['interval'])
 
     # iterate over time intervals and files and sort the files into the corresonding intervals
@@ -129,10 +84,14 @@ def main():
                 print(f'    {f}')
 
     for interval, files in aggregated_files.items():
+        # use the first file in the file list to extract file prefix (everything except the timestamp)
+        # and the file ending. 
         filename_prefix = get_filename_prefix(files[0], args['output_prefix'])
         filename_ending = get_filename_ending(files[0])
+        # build the output file name and path
         output_filepath = get_output_filepath(output_dir = args['output'], filename_prefix = filename_prefix, timestamp = interval, filename_ending = filename_ending)
         if args['verbose']: print(f'setting output file to {output_filepath}')
+        # concatenate all files from one interval into a single file
         concat_files(output_filepath = output_filepath, files = files)
 
 if __name__ == "__main__":
