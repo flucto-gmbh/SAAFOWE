@@ -16,11 +16,14 @@ def parse_cmdline() -> dict:
     cmd_parser.add_argument('-t', '--interval', type=str, default='hourly', help='aggregation interval. Valid descriptors are: hourly, daily or monthly') 
     cmd_parser.add_argument('input', nargs='+', default=(None if sys.stdin.isatty() else sys.stdin))
     cmd_parser.add_argument('-o', '--output', default=path.curdir, type=str, help='output directory')
+    cmd_parser.add_argument('-p', '--output-prefix', default='aggregated', type=str, help='prefix to be prepended to the output file')
 
     return cmd_parser.parse_args().__dict__
 
-def get_filename_prefix(filepath : str, filename_sep : str = '_') -> str:
-    return ''.join(filepath.split(path.sep)[-1].split(filename_sep)[:-1])
+def get_filename_prefix(filepath : str, prefix : str, filename_sep : str = '_') -> str:
+    filename_without_timestamp = '_'.join(filepath.split(path.sep)[-1].split(filename_sep)[:-1])
+    return f'{prefix}_{filename_without_timestamp}'
+
 
 def get_filename_ending(filepath : str) -> str:
     return filepath.split('.')[-1]
@@ -112,13 +115,23 @@ def main():
                 print(f'    {f}')
 
     for interval, files in aggregated_files.items():
-        filename_prefix = get_filename_prefix(files[0])
+        filename_prefix = get_filename_prefix(files[0], args['output_prefix'])
         filename_ending = get_filename_ending(files[0])
         output_filepath = get_output_filepath(output_dir = args['output'], filename_prefix = filename_prefix, timestamp = interval, filename_ending = filename_ending)
-        print(f'setting output file to {output_filepath}')
+        if args['verbose']: print(f'setting output file to {output_filepath}')
+        with open(output_filepath, 'a') as output_filehandle:
+            header_written = False
+            for file in files:
+                with open(file, 'r') as input_filehandle:
+                    header = input_filehandle.readline()
+                    if not header_written:
+                        output_filehandle.write(header)
+                        header_written = True
+                    for line in input_filehandle:
+                        output_filehandle.write(line)
 
 
-
+                    
 
     # 6. iterate over the intervals, read in files, sanitize files and write them out
 
