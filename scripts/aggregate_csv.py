@@ -12,11 +12,11 @@ AGGREGATE_INTERVALS = ["hourly", "daily", "monthly"]
 
 def parse_cmdline() -> dict:
     cmd_parser = argparse.ArgumentParser()
-    cmd_parser.add_argument('--verbose', action="store_true")
-    cmd_parser.add_argument('-t', '--interval', type=str, default='hourly', help='aggregation interval. Valid descriptors are: hourly, daily or monthly') 
     cmd_parser.add_argument('input', nargs='+', default=(None if sys.stdin.isatty() else sys.stdin))
     cmd_parser.add_argument('-o', '--output', default=path.curdir, type=str, help='output directory')
     cmd_parser.add_argument('-p', '--output-prefix', default='aggregated', type=str, help='prefix to be prepended to the output file')
+    cmd_parser.add_argument('-t', '--interval', type=str, default='hourly', help='aggregation interval. Valid descriptors are: hourly, daily or monthly') 
+    cmd_parser.add_argument('--verbose', action="store_true")
 
     return cmd_parser.parse_args().__dict__
 
@@ -36,8 +36,18 @@ def get_output_filepath(output_dir : str, filename_prefix : str, timestamp : dat
     return path.join(output_dir, filename)
     
 
-def concat_files():
-    pass
+def concat_files(output_filepath : str, files : list):
+    with open(output_filepath, 'a') as output_filehandle:
+        header_written = False
+        for file in files:
+            with open(file, 'r') as input_filehandle:
+                header = input_filehandle.readline()
+                if not header_written:
+                    output_filehandle.write(header)
+                    header_written = True
+                for line in input_filehandle:
+                    output_filehandle.write(line)
+
 
 def extract_timestamp(filename : str, filename_sep : str = '_', timestamp_pos : int = -1, timestamp_fmt : str = '%Y-%m-%dT%H:%M:%S%z') -> datetime:
 
@@ -97,16 +107,20 @@ def main():
                 if ts:
                     if args['verbose']: print(f'found valid input file: {f}')
                     input_files[ts] = f
-
+    # get the first and the last interval
     begin = sorted(input_files.keys())[0]
     end = sorted(input_files.keys())[-1]
+    # calculate intervals
     intervals = calc_time_intervals(begin=begin, end=end, interval=args['interval'])
 
+    # iterate over time intervals and files and sort the files into the corresonding intervals
     for lower, upper in zip(intervals[:-1], intervals[1:]):
         if args['verbose']: print(f'processing {lower} -> {upper}')
         for timestamp, f in input_files.items():
-            if lower < timestamp <= upper:
+            if lower <= timestamp <= upper:
                 aggregated_files[upper].append(f)
+            else:
+                if args['verbose']: print(f'skipping timestamp {timestamp} from file {f}')
 
     if args['verbose']:
         for interval, files in aggregated_files.items():
@@ -119,16 +133,7 @@ def main():
         filename_ending = get_filename_ending(files[0])
         output_filepath = get_output_filepath(output_dir = args['output'], filename_prefix = filename_prefix, timestamp = interval, filename_ending = filename_ending)
         if args['verbose']: print(f'setting output file to {output_filepath}')
-        with open(output_filepath, 'a') as output_filehandle:
-            header_written = False
-            for file in files:
-                with open(file, 'r') as input_filehandle:
-                    header = input_filehandle.readline()
-                    if not header_written:
-                        output_filehandle.write(header)
-                        header_written = True
-                    for line in input_filehandle:
-                        output_filehandle.write(line)
+        concat_files(output_filepath = output_filepath, files = files)
 
 if __name__ == "__main__":
     main()
