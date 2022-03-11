@@ -8,22 +8,35 @@ sys.path.insert(0, path.abspath(path.join(path.dirname(__file__), '../src')))
 
 from SAAFOWE.io.timefiles import find_time_files, calc_time_intervals
 
+AGGREGATE_INTERVALS = ["hourly", "daily", "monthly"]
 
 def parse_cmdline() -> dict:
     cmd_parser = argparse.ArgumentParser()
     cmd_parser.add_argument('--verbose', action="store_true")
     cmd_parser.add_argument('-t', '--interval', type=str, default='hourly', help='aggregation interval. Valid descriptors are: hourly, daily or monthly') 
     cmd_parser.add_argument('input', nargs='+', default=(None if sys.stdin.isatty() else sys.stdin))
+    cmd_parser.add_argument('-o', '--output', default=path.curdir, type=str, help='output directory')
 
     return cmd_parser.parse_args().__dict__
 
-def get_output_filename():
-    pass
+def get_filename_prefix(filepath : str, filename_sep : str = '_') -> str:
+    return ''.join(filepath.split(path.sep)[-1].split(filename_sep)[:-1])
+
+def get_filename_ending(filepath : str) -> str:
+    return filepath.split('.')[-1]
+
+
+def get_output_filepath(output_dir : str, filename_prefix : str, timestamp : datetime, filename_ending : str, filename_sep = "_", timestamp_fmt = '%Y-%m-%dT%H:%M:%S%z'):
+    assert path.isdir(output_dir), f'not a directory {output_dir}'
+    filename = filename_sep.join([filename_prefix, datetime.strftime(timestamp, timestamp_fmt)])
+    filename = f'{filename}.{filename_ending}'
+    return path.join(output_dir, filename)
+    
 
 def concat_files():
     pass
 
-def extract_timestamp(filename : str, filename_sep = '_', timestamp_pos : int = -1, timestamp_fmt : str = '%Y-%m-%dT%H:%M:%S%z') -> datetime:
+def extract_timestamp(filename : str, filename_sep : str = '_', timestamp_pos : int = -1, timestamp_fmt : str = '%Y-%m-%dT%H:%M:%S%z') -> datetime:
 
     """
     extract_timestamp(filename : str, filename_sep = '_', timestamp_pos : int = -1 timestamp_fmt : str = '%Y-%m-%dT%T%z'):
@@ -54,10 +67,11 @@ def extract_timestamp(filename : str, filename_sep = '_', timestamp_pos : int = 
 
 def main():
     # parse command line arguments
-    args = parse_cmdline()
     input_files = dict()
     aggregated_files = defaultdict(list)
-    
+    args = parse_cmdline()
+    assert args['interval'] in AGGREGATE_INTERVALS, f'not a valid interval: {args["interval"]}'
+
     if args['verbose']:
         print(f'config: {args}')
         print(f'sys.path: {sys.path}')
@@ -96,6 +110,15 @@ def main():
             print(f'{interval}')
             for f in files:
                 print(f'    {f}')
+
+    for interval, files in aggregated_files.items():
+        filename_prefix = get_filename_prefix(files[0])
+        filename_ending = get_filename_ending(files[0])
+        output_filepath = get_output_filepath(output_dir = args['output'], filename_prefix = filename_prefix, timestamp = interval, filename_ending = filename_ending)
+        print(f'setting output file to {output_filepath}')
+
+
+
 
     # 6. iterate over the intervals, read in files, sanitize files and write them out
 

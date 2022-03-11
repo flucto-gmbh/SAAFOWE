@@ -39,7 +39,7 @@ def calc_time_intervals(begin : datetime, end : datetime, interval : str = 'hour
     if interval == 'hourly':
         td = timedelta(hours=1)
         interval_start = datetime(year=begin.year, month=begin.month, day=begin.day, hour=begin.hour, tzinfo=begin.tzinfo)
-    elif interval == 'dayly':
+    elif interval == 'daily':
         td = timedelta(hours=24)
         interval_start = datetime(year=begin.year, month=begin.month, day=begin.day, tzinfo=begin.tzinfo)
     #elif interval == 'week':
