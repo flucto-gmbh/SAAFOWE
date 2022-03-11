@@ -130,11 +130,6 @@ def main():
                     for line in input_filehandle:
                         output_filehandle.write(line)
 
-
-                    
-
-    # 6. iterate over the intervals, read in files, sanitize files and write them out
-
 if __name__ == "__main__":
     main()
 
