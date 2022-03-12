@@ -1,10 +1,8 @@
 import argparse
-from code import interact
 from datetime import (datetime, timezone)
 from os import path
 import sys
 import time
-from pexpect import ExceptionPexpect
 
 sys.path.insert(0, path.abspath(path.join(path.dirname(__file__), '../src')))
 
