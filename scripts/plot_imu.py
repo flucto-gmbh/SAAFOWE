@@ -39,8 +39,9 @@ def main():
     if args['output_dir']:
         for p in IMU_PARAMETERS.keys():
             plt.savefig(path.join(args['output_dir'], IMU_PARAMETERS[p]['fig_name']), dpi=PLOT_PARAMETERS['dpi'])
-    
-    plt.show()
+
+    if args['interactive']:
+        plt.show()
     # save figs here
 
 if __name__ == "__main__":
