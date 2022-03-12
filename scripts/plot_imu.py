@@ -1,4 +1,5 @@
 import argparse
+from curses import meta
 import matplotlib.pyplot as plt
 from os import path
 import pandas as pd
@@ -19,12 +20,19 @@ def parse_args() -> dict:
     arg_parser.add_argument('--verbose', action='store_true', help='debug flag')
     return arg_parser.parse_args().__dict__
 
-def plot_imu_component(data : pd.DataFrame, component_parameters : dict, plot_config : dict):
-    plt.figure(figsize=plot_config['figsize'])
-    for k, l in zip(component_parameters['column_names'], component_parameters['labels']):
+def plot_data(data : pd.DataFrame, metadata : dict, plot_config : dict):
+    fig = plt.figure(figsize=plot_config['figsize'])
+    for k, l in zip(metadata['column_names'], metadata['labels']):
         plt.plot(data[k], label=l)
-    plt.ylabel(component_parameters['ylabel'])
+    if 'ylabel' in metadata:
+        plt.ylabel(metadata['ylabel'])
     plt.xlabel('date / time')
+    if 'ylim' in metadata:
+        plt.ylim(metadata['ylim'])
+    if 'title' in metadata:
+        plt.title(metadata['title'])
+    return fig
+    
     
 def main():
 
@@ -32,13 +40,14 @@ def main():
     input_files = parse_input(args)
     data = read_csv_files(input_files=input_files)
 
-    plot_imu_component(data, component_parameters=IMU_PARAMETERS['acceleration'], plot_config=PLOT_PARAMETERS)
-    plot_imu_component(data, component_parameters=IMU_PARAMETERS['rotation'], plot_config=PLOT_PARAMETERS)
-    plot_imu_component(data, component_parameters=IMU_PARAMETERS['magfield'], plot_config=PLOT_PARAMETERS)
+    acceleration_figure = plot_data(data, metadata=IMU_PARAMETERS['acceleration'], plot_config=PLOT_PARAMETERS)
+    rotation_figure = plot_data(data, metadata=IMU_PARAMETERS['rotation'], plot_config=PLOT_PARAMETERS)
+    magfield_figure = plot_data(data, metadata=IMU_PARAMETERS['magfield'], plot_config=PLOT_PARAMETERS)
     
     if args['output_dir']:
-        for p in IMU_PARAMETERS.keys():
-            plt.savefig(path.join(args['output_dir'], IMU_PARAMETERS[p]['fig_name']), dpi=PLOT_PARAMETERS['dpi'])
+        acceleration_figure.savefig(path.join(args['output_dir'], IMU_PARAMETERS['acceleration']['fig_name']), dpi=PLOT_PARAMETERS['dpi'])
+        rotation_figure.savefig(path.join(args['output_dir'], IMU_PARAMETERS['rotation']['fig_name']), dpi=PLOT_PARAMETERS['dpi'])
+        magfield_figure.savefig(path.join(args['output_dir'], IMU_PARAMETERS['magfield']['fig_name']), dpi=PLOT_PARAMETERS['dpi'])
 
     if args['interactive']:
         plt.show()
