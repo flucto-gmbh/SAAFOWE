@@ -12,6 +12,11 @@ from csv_io import gen_input_files, read_csv_files
 from plot_config import FIGURE_CONFIGURATION, gps_position, gps_altitude
 from plot import plot_timeseries, plot_gps_track, plot_gps_track_empty, plot_gps_track_tilemapbase
 
+# TODO
+# - implement different map backends:
+#   - ipyleaflet: https://ipyleaflet.readthedocs.io/en/latest/api_reference/map.html -> export to html and open browser
+#   - folium: http://python-visualization.github.io/folium/quickstart.html -> export to html and open in browser
+
 def define_cmdline_args() -> argparse.ArgumentParser:
     """
     define_cmdline_args -> argparse.ArgumentParser object
