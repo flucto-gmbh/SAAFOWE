@@ -3,7 +3,6 @@
 import argparse
 from datetime import datetime, timezone, timedelta
 from glob import glob
-from tabnanny import verbose
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import numpy as np

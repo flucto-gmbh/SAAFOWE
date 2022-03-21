@@ -1,5 +1,4 @@
 import argparse
-from curses import meta
 import matplotlib.pyplot as plt
 from os import path
 import pandas as pd
