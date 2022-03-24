@@ -8,7 +8,7 @@ import sys
 # insert current directory into PYTHONPATH to allow imports
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-from csv_io import gen_input_files, read_csv_files
+from csv_io import gen_input_files, read_csv_files_imu
 from plot_config import FIGURE_CONFIGURATION, IMU_SENSORS
 from plot import plot_timeseries, plot_psd_imu, plot_spectrum_imu
 
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     args = parse_cmdline_args(define_cmdline_args())
     if args["verbose"]:
         print(f"command line parameters: {args}")
-    data = read_csv_files(gen_input_files(args), verbose=args["verbose"])
+    data = read_csv_files_imu(gen_input_files(args), verbose=args["verbose"])
     if args["verbose"]:
         print(f"{data.info()}")
     figures = dict()
@@ -99,7 +99,7 @@ if __name__ == "__main__":
             print(f"processing {sensor_name}")
         figures[sensor_name] = plot_timeseries(
             data,
-            metadata=sensor_plot_metadata,
+            plot_metadata=sensor_plot_metadata,
             figure_configuration=FIGURE_CONFIGURATION,
         )
         if args["psd"]:

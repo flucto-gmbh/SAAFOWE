@@ -29,7 +29,8 @@ gps_position = {
         'labels' : ['latitude', 'longitude'],
         'ylabel' : "latitude",
         'xlabel' : "longitude",
-        'margin' : 0figure_filename'lat_lon.png",
+        'margin' : 0.1,
+        'figure_filename' : "lat_lon.png",
         #'ylim' : [-1.5, 1.5],
         'title' : 'Latitude/Longitude',
 }
