@@ -68,5 +68,7 @@ def read_csv_files_gps(file_paths : iter, verbose : bool = False) -> pd.DataFram
 def read_csv_files_imu(file_paths : iter, verbose : bool = False) -> pd.DataFrame:
     raw_data = read_csv_files(file_paths, verbose=verbose)
     raw_data = raw_data.apply(lambda x: pd.to_numeric(x, errors='coerce')).dropna()
+    return raw_data
+
     # gps data contains one column of strings (date time strings).
     # drop this column
