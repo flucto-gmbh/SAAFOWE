@@ -121,11 +121,9 @@ def gen_filepaths_with_timestamps(paths, verbose=True):
             yield (timestamp, path)
 
 
-def are_equivalent_filepaths_with_timestamps(
-    x: tuple, y: tuple, interval: str
-) -> bool:
+def are_equivalent_filepaths_with_timestamps(x: tuple, y: tuple, interval: str) -> bool:
     """
-    receives two tuples objects x and y and checks if they are datetime 
+    receives two tuples objects x and y and checks if they are datetime
     in their first field are equivalent
     """
     assert interval in INTERVALS
@@ -154,7 +152,7 @@ def are_equivalent_filepaths_with_timestamps(
 
 def partition_filepaths_with_timestamps(paths_with_ts: iter, interval: str):
     assert interval in INTERVALS
-    # creates a new object eq that behaves like the functions 
+    # creates a new object eq that behaves like the functions
     # are_equivalent_filepaths_with_timestamps with the interval as given
     eq = partial(are_equivalent_filepaths_with_timestamps, interval=interval)
     for gen in partition(paths_with_ts, eq):
@@ -193,7 +191,6 @@ def concat_csvs(paths):
                 ), f"CSV headers don't match: {header} != {other_header}"
                 for line in f:
                     yield line
-
 
 def make_output_path(
     output_dir,
