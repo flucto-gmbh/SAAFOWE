@@ -19,10 +19,14 @@ def get_hostname_getent(remote_host : str):
     else:
         return None
 
-def get_hostname_ssh(ssh_remote_host : str) -> str:
-    if hostname := ssh_exec(ssh_remote_host, cmd = 'hostname'):
+def get_hostname_ssh(ssh_remote_host : str, verbose : bool = False) -> str:
+    if hostname := ssh_exec(ssh_remote_host, cmd = 'hostname', verbose = verbose):
+        if verbose:
+            print(f'retrieved hostname {hostname.rstrip()}')
         return hostname.rstrip().lower()
     else:
+        if verbose: 
+            print('failed to get hostname')
         return None
 
 def assemble_hosts_local(serialnumber : str, verbose=False) -> iter:
@@ -33,15 +37,15 @@ def assemble_hosts_local(serialnumber : str, verbose=False) -> iter:
     if hostname == serialnumber:
         if verbose:
             print(f'hostname and serialnumber match! {serialnumber} == {hostname}')
-        return (hostname, remote_host)
+        return (hostname, f"{SSH_USER}@{remote_host} -i {SSH_KEYFILE}")
     else:
         return None
 
-def assemble_hosts_remote(serialnumber : str, verbose=False) -> iter:
+def assemble_hosts_remote(serialnumber : str, verbose : bool = False) -> iter:
     ssh_remote_host = f'{SSH_USER}@{REMOTE_SERVER} -p {serial2port(serialnumber)} -i {SSH_KEYFILE}'
     if verbose:
         print(f'assembled ssh remote host: {ssh_remote_host}')
-    hostname = get_hostname_ssh(ssh_remote_host)
+    hostname = get_hostname_ssh(ssh_remote_host, verbose = verbose)
     if hostname == serialnumber:
         if verbose:
             print(f'hostname and serialnumber match! {serialnumber} == {hostname}')
@@ -49,17 +53,32 @@ def assemble_hosts_remote(serialnumber : str, verbose=False) -> iter:
     else:
         return None
 
-def assemble_hosts_ip():
-    pass
+def assemble_hosts(serialnumbers : list, remote : bool = False, verbose : bool = False) -> iter:
+    """
+    assemble_hosts(serialnumbers : list, remote : bool = False, verbose : bool = False) -> iter
 
-def assemble_hosts(config : dict) -> iter:
-    for serialnumber in config['msb']:
-        if config['verbose']:
+    Parameters:
+        serialnumbers (list): A list containing serialnumbers of motion sensor
+            from which data is to be retrieved
+
+        remote (bool): flag to be used if data is to be retrieved via reverse
+            ssh tunnels
+
+        verbose (bool): flag to display debugging information
+
+    Returns:
+        Returns an iterator of tuples containing the serialnumber (str)
+        and an ssh access string, that can be used to fetch data or execute
+        remote bash commands
+
+    """
+    for serialnumber in serialnumbers:
+        if verbose:
             print(f'processing serialnumber: {serialnumber}')
-        if config['remote']:
-            if host_access := assemble_hosts_remote(serialnumber, verbose=config['verbose']):
+        if remote:
+            if host_access := assemble_hosts_remote(serialnumber, verbose=verbose):
                 yield host_access
         else:
-            if host_access := assemble_hosts_local(serialnumber, verbose=config['verbose']):
+            if host_access := assemble_hosts_local(serialnumber, verbose=verbose):
                 yield host_access
 

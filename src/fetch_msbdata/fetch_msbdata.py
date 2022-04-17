@@ -4,17 +4,12 @@ import fabric
 import os
 import sys
 
-from msbhostnames import assemble_hosts_ip, assemble_hosts_msb, assemble_hosts_remote
+from msbdata import fetch_datafile_paths
+from msbhosts import assemble_hosts
 
 
 def parse_validate_cmdline() -> dict:
     cmd_parser = argparse.ArgumentParser()
-    cmd_parser.add_argument(
-        "--ip",
-        nargs="+",
-        default=None,
-        help="ip addresses of motion sensor boxes to fetch data from",
-    )
     cmd_parser.add_argument(
         "--msb",
         nargs="+",
@@ -23,13 +18,6 @@ def parse_validate_cmdline() -> dict:
     )
     cmd_parser.add_argument(
         "-o", "--output-dir", required=True, type=str, help="output directory"
-    )
-    cmd_parser.add_argument(
-        "-p",
-        "--output-prefix",
-        default="aggregated",
-        type=str,
-        help="prefix to be prepended to the output file",
     )
     cmd_parser.add_argument("--verbose", action="store_true")
     cmd_parser.add_argument(
@@ -40,47 +28,44 @@ def parse_validate_cmdline() -> dict:
         default=False,
     )
     cmd_parser.add_argument(
-        "--list-available-msb",
-        action="store_true",
-        default=False,
-        help="if set, the list of available motion sensor boxes is printed",
-    )
-    cmd_parser.add_argument(
         "--list-available-data",
         action="store_true",
         default=False,
         help="if set, the list of available data per motion sensor box is printed",
     )
+    cmd_parser.add_argument(
+        "--begin",
+        default=
+        type=str,
+        help='use to select files based on a time stamp',
+    )
+    cmd_parser.add_argument(
+        "--end",
+        type=str,
+        help='use to select files based on a time stamp',
+    )
     args = cmd_parser.parse_args().__dict__
     assert os.path.isdir(args["output_dir"]), f'not a directory: {args["output"]}'
-    if not args["ip"] and not args["msb"]:
-        print(
-            "please provide either a set of motion sensor box serial numbers\
-via the --msb command line paramter or a range of ip\
-addresses via the --ip command line parameter"
-        )
-        sys.exit()
-    if args["remote"] and not args["msb"]:
-        print(
-            "please provide at least on motion sensor box serial number via\
-the --msb command line paramter when using the --remote option"
+    assert args["msb"], print(
+        "please provide at least one motion sensor box serial number via\
+the --msb command line parameter"
         )
     return args
 
 
 def fetch_msbdata():
     config = parse_validate_cmdline()
-    hosts = list()
-    if config["remote"]:
-        hosts = assemble_hosts_remote(config["msb"])
-    else:
-        if config["msb"]:
-            hosts = assemble_hosts_msb(config["msb"])
-        if config["ip"]:
-            hosts = assemble_hosts_ip(config["ip"])
+    if config["verbose"]:
+        print(config)
 
-    for host in hosts:
-        pass
+    for serialnumber, ssh_access_string in assemble_hosts(
+        config["msb"], remote=config["remote"], verbose=config["verbose"]
+    ):
+        for i, data_fpath in enumerate(fetch_datafile_paths(
+            serialnumber, ssh_access_string, verbose=config["verbose"]
+        )):
+            if config['list_available_data']:
+                print(i, data_fpath)
 
 
 if __name__ == "__main__":
