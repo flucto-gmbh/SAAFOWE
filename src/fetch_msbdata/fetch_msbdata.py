@@ -1,11 +1,14 @@
 import argparse
 from config import REMOTE_SERVER, MSB_LIST
+from datetime import datetime, timezone
 import fabric
 import os
 import sys
+import time
 
-from msbdata import fetch_datafile_paths
+from msbdata import fetch_datafile_paths, extract_datetime_fpath
 from msbhosts import assemble_hosts
+from msbtimes import parse_begin_end
 
 
 def parse_validate_cmdline() -> dict:
@@ -35,12 +38,13 @@ def parse_validate_cmdline() -> dict:
     )
     cmd_parser.add_argument(
         "--begin",
-        default=
+        default=None,
         type=str,
-        help='use to select files based on a time stamp',
+        help='use to select files based on a time stamp. Default is 1970-01-01T00:00:00',
     )
     cmd_parser.add_argument(
         "--end",
+        default=None,
         type=str,
         help='use to select files based on a time stamp',
     )
@@ -52,11 +56,13 @@ the --msb command line parameter"
         )
     return args
 
-
-def fetch_msbdata():
-    config = parse_validate_cmdline()
+def fetch_msbdata(config : dict):
     if config["verbose"]:
         print(config)
+
+    (begin, end) = parse_begin_end(config)
+    if config['verbose']:
+        print(f"begin: {begin} -> end: {end}")
 
     for serialnumber, ssh_access_string in assemble_hosts(
         config["msb"], remote=config["remote"], verbose=config["verbose"]
@@ -64,9 +70,11 @@ def fetch_msbdata():
         for i, data_fpath in enumerate(fetch_datafile_paths(
             serialnumber, ssh_access_string, verbose=config["verbose"]
         )):
-            if config['list_available_data']:
-                print(i, data_fpath)
-
+            if begin <= extract_datetime_fpath(data_fpath) <= end:
+                if config['list_available_data']:
+                    print(i, data_fpath)
+                copy_remote_local(ssh_access_string, data_fpath, test=True)
 
 if __name__ == "__main__":
-    fetch_msbdata()
+    config = parse_validate_cmdline()
+    fetch_msbdata(config)
