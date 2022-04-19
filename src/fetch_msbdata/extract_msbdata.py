@@ -26,7 +26,6 @@ def extract_msbdata(config : dict):
             continue
         decompose_logfile_stream(read_parse_msbdatafile(logfile, verbose=config['verbose']), logfile_name, output_dir=config['output_dir'])
 
-        
 
 if __name__ == "__main__":
     config = parse_cmdline()
