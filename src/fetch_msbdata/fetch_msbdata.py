@@ -1,7 +1,7 @@
 import argparse
 from config import REMOTE_SERVER, MSB_LIST, MSB_LOCAL_DATA_DIR
 from datetime import datetime, timezone
-import fabric
+# import fabric
 import os
 import sys
 import time

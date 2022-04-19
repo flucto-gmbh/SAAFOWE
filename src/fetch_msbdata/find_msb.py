@@ -4,7 +4,7 @@ import os
 import sys
 
 from config import MSB_LIST
-from msbhostnames import assemble_hosts
+from msbhosts import assemble_hosts
 
 def parse_validate_cmdline() -> dict:
     cmd_parser = argparse.ArgumentParser()
@@ -19,13 +19,13 @@ def parse_validate_cmdline() -> dict:
     args = cmd_parser.parse_args().__dict__
     return args
 
-def find_msb():
-    config = parse_validate_cmdline()
+def find_msb(config : dict):
     if config['verbose']:
         print(json.dumps(config))
     config['msb'] = MSB_LIST
-    for host, access in assemble_hosts(config):
+    for host, access in assemble_hosts(config['msb'], remote=config['remote'], verbose=config['verbose']):
         print(host, access)
 
 if __name__ == "__main__":
-    find_msb()
+    config = parse_validate_cmdline()
+    find_msb(config)
