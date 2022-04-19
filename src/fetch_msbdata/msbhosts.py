@@ -11,12 +11,15 @@ def hostname2serial(hostname : str) -> str:
 def serial2port(serialnumber : str, port_offset : int = 65000) -> int:
     return int(serialnumber.split('-')[1]) + port_offset
 
-def get_hostname_getent(remote_host : str):
+def get_hostname_getent(remote_host : str, verbose=False):
     output = subprocess.Popen(f'getent hosts {remote_host}', shell=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).communicate()[0]
     if output:
-        ip, hostname = output.decode('utf-8').split(' ')
-        return (hostname, ip)
+        if verbose:
+            print(f'getent returned {output}')
+        ip, hostname = " ".join(output.decode('utf-8').rstrip().split(' ')).split()
+        return hostname.lower()
     else:
+        print(f'failed to resolve {remote_host}')
         return None
 
 def get_hostname_ssh(ssh_remote_host : str, verbose : bool = False) -> str:
@@ -33,11 +36,13 @@ def assemble_hosts_local(serialnumber : str, verbose=False) -> iter:
     remote_host = serial2hostname(serialnumber)
     if verbose:
         print(f'trying host: {remote_host}')
-    hostname = get_hostname_getent(remote_host)
-    if hostname == serialnumber:
+    hostname = get_hostname_getent(remote_host, verbose=verbose)
+    if verbose:
+        print(f'get_hostname_getent returned {hostname}')
+    if hostname.split(".")[0] == serialnumber:
         if verbose:
             print(f'hostname and serialnumber match! {serialnumber} == {hostname}')
-        return (hostname, f"{SSH_USER}@{remote_host} -i {SSH_KEYFILE}")
+        return (serialnumber, f"{SSH_USER}@{remote_host} -i {SSH_KEYFILE}")
     else:
         return None
 
@@ -73,6 +78,7 @@ def assemble_hosts(serialnumbers : list, remote : bool = False, verbose : bool =
 
     """
     for serialnumber in serialnumbers:
+        serialnumber = serialnumber.lower()
         if verbose:
             print(f'processing serialnumber: {serialnumber}')
         if remote:

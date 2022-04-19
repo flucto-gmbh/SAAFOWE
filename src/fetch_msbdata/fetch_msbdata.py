@@ -1,14 +1,15 @@
 import argparse
-from config import REMOTE_SERVER, MSB_LIST
+from config import REMOTE_SERVER, MSB_LIST, MSB_LOCAL_DATA_DIR
 from datetime import datetime, timezone
 import fabric
 import os
 import sys
 import time
 
-from msbdata import fetch_datafile_paths, extract_datetime_fpath
+from msbdata import fetch_remote_datafile_paths, extract_datetime_fpath
 from msbhosts import assemble_hosts
 from msbtimes import parse_begin_end
+from scp import copy_remote_datafile
 
 
 def parse_validate_cmdline() -> dict:
@@ -29,6 +30,12 @@ def parse_validate_cmdline() -> dict:
         help="fetch data via reverse ssh tunnels on a remote server",
         action="store_true",
         default=False,
+    )
+    cmd_parser.add_argument(
+        "--datetime-format",
+        type=str,
+        default="%Y-%m-%dT%H-%M-%S",
+        help="date time format of timestamps in data files"
     )
     cmd_parser.add_argument(
         "--list-available-data",
@@ -67,13 +74,17 @@ def fetch_msbdata(config : dict):
     for serialnumber, ssh_access_string in assemble_hosts(
         config["msb"], remote=config["remote"], verbose=config["verbose"]
     ):
-        for i, data_fpath in enumerate(fetch_datafile_paths(
+        print(serialnumber, ssh_access_string)
+        for remote_datafile_path in fetch_remote_datafile_paths(
             serialnumber, ssh_access_string, verbose=config["verbose"]
-        )):
-            if begin <= extract_datetime_fpath(data_fpath) <= end:
-                if config['list_available_data']:
-                    print(i, data_fpath)
-                copy_remote_local(ssh_access_string, data_fpath, test=True)
+        ):
+            if remote_datafile_ts := extract_datetime_fpath(remote_datafile_path, datetime_fmt=config['datetime_format']):
+                if config['verbose']:
+                    print(f'extracted timestamp: {remote_datafile_ts}')
+                if begin <= remote_datafile_ts <= end:
+                    if config['list_available_data']:
+                        print(remote_datafile_path)
+                    copy_remote_datafile(remote_datafile_path, serialnumber, config, verbose=True)
 
 if __name__ == "__main__":
     config = parse_validate_cmdline()

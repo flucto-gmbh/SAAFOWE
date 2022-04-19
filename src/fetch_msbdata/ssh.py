@@ -1,6 +1,5 @@
 import subprocess
-from config import SSH_KEYFILE, SSH_USER
-
+from config import SSH_KEYFILE, SSH_USER, REMOTE_SERVER
 
 def ssh_exec(ssh_remote_host: str, cmd: str, verbose : bool = False) -> str:
     # return subprocess.Popen(f'ssh {ssh_remote_host} {cmd}', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
@@ -17,7 +16,12 @@ def ssh_exec(ssh_remote_host: str, cmd: str, verbose : bool = False) -> str:
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
     ).communicate()[0]
+    if verbose:
+        print(f'ssh_exec returned: {output}')
     if output:
         return output.decode("utf-8")
     else:
         return None
+
+
+

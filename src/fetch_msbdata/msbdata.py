@@ -5,7 +5,7 @@ from msbtimes import parse_fmt_timestamp_string
 from config import MSB_REMOTE_DATA_DIR, MSB_LOCAL_DATA_DIR
 from ssh import ssh_exec
 
-def fetch_datafile_paths(
+def fetch_remote_datafile_paths(
     serialnumber: str, ssh_remote_host: str, verbose: bool = False
 ) -> list:
     for fpath in ssh_exec(
