@@ -4,8 +4,14 @@ from datetime import date, datetime, timezone, timedelta
 import os
 import sys
 
-from csv_io import gen_input_files, extract_timestamps_fnames, validate_fpaths, concat_files
-from partition_timestamps import are_in_equivalent_interval, AGGREGATION_INTERVALS
+# from csv_io import gen_input_files, extract_timestamps_fnames, validate_fpaths, concat_files
+from msbdata import (
+    gen_input_files,
+    extract_timestamp_fpaths,
+    validate_fpaths,
+    concat_files,
+)
+from msbtimes import are_in_equivalent_datetime_interval, AGGREGATION_INTERVALS
 
 
 def parse_cmdline() -> dict:
@@ -30,11 +36,17 @@ def parse_cmdline() -> dict:
         default="hourly",
         help="aggregation interval. Valid descriptors are: hourly, daily or monthly",
     )
+    cmd_parser.add_argument(
+        "--timestamp-format",
+        type=str,
+        default="%Y%m%dT%H%M%S%z",
+        help="datetime format as being used in the data files"
+    )
     cmd_parser.add_argument("--verbose", action="store_true")
     return cmd_parser.parse_args().__dict__
 
 
-def partition_files(timestamp_filepath_iterator: iter, args: dict):
+def partition_files_by_timestamp(timestamp_filepath_iterator: iter, args: dict):
     intervals = list()
     for timestamp, fpath in timestamp_filepath_iterator:
         if args["verbose"]:
@@ -48,7 +60,7 @@ def partition_files(timestamp_filepath_iterator: iter, args: dict):
                 break
             if args["verbose"]:
                 print(f"{timestamp} : {fpath}")
-            if are_in_equivalent_interval(
+            if are_in_equivalent_datetime_interval(
                 timestamp=timestamp,
                 interval_boundary=current_interval[0][0],
                 interval=args["interval"],
@@ -82,8 +94,7 @@ def make_output_path(
     return output_path
 
 
-def main():
-    args = parse_cmdline()
+def aggregate_msbdata(args : dict):
     assert (
         args["interval"] in AGGREGATION_INTERVALS
     ), f'not a valid interval: {args["interval"]}'
@@ -91,8 +102,14 @@ def main():
         print(f"config: {args}")
         print(f"sys.path: {sys.path}")
 
-    for interval in partition_files(
-        extract_timestamps_fnames(validate_fpaths(gen_input_files(args))), args=args
+    for interval in partition_files_by_timestamp(
+        extract_timestamp_fpaths(
+            validate_fpaths(
+                gen_input_files(args)
+            ),
+            timestamp_fmt=args['timestamp_format']
+        ),
+        args=args
     ):
         if args["verbose"]:
             print(f"start: {interval[0][0]} -> end: {interval[-1][0]}")
@@ -107,8 +124,8 @@ def main():
         )
         if args["verbose"]:
             print(f"ouput: {output_path}")
-
         concat_files(output_path, interval)
 
 if __name__ == "__main__":
-    main()
+    args = parse_cmdline()
+    aggregate_msbdata(args)

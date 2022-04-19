@@ -1,40 +1,32 @@
-from datetime import datetime, timezone, timedelta
-import time
-import sys
+from datetime import datetime, timedelta, timezone
 
 AGGREGATION_INTERVALS = ["hourly", "daily", "weekly", "monthly", "all"]
 
-def parse_fmt_timestamp_string(timestamp_string : str, fmt : str = "%Y-%m-%dT%H-%M-%S", verbose=False) -> datetime:
-    try:
-        timestamp = datetime(*time.strptime(timestamp_string, fmt)[:6])
-    except Exception as e:
-        if verbose:
-            print(f'failed to parse time stamp: {timestamp_string}: {e}.. skipping')
-        return None
-    timestamp = timestamp.replace(tzinfo=timezone.utc)
-    return timestamp
+test_timestamps_hourly = [
+    datetime.fromisoformat("2021-01-01T00:00:00+00:00") + timedelta(seconds=600) * i
+    for i in range(0, 21)
+]
+test_timestamps_daily = [
+    datetime.fromisoformat("2021-01-01T00:00:00+00:00") + timedelta(hours=12) * i
+    for i in range(0, 21)
+]
+test_timestamps_weekly = [
+    datetime.fromisoformat("2021-01-01T00:00:00+00:00") + timedelta(days=3) * i
+    for i in range(0, 21)
+]
+test_timestamps_monthly = [
+    datetime.fromisoformat("2021-01-01T00:00:00+00:00") + timedelta(weeks=2) * i
+    for i in range(0, 21)
+]
+test_timestamps_all = [
+    *test_timestamps_hourly,
+    *test_timestamps_daily,
+    *test_timestamps_weekly,
+    *test_timestamps_monthly,
+]
 
-def parse_generic_timestamp_string(timestamp_string : str) -> datetime:
-    try:
-        timestamp = datetime.fromisoformat(timestamp_string)
-    except Exception as e:
-        print(f'failed to parse time stamp: {timestamp_string}: {e}')
-        sys.exit()
-    timestamp = timestamp.replace(tzinfo=timezone.utc)
-    return timestamp
 
-def parse_begin_end(config : dict) -> tuple:
-    if config['begin']:
-        begin = parse_generic_timestamp_string(config['begin'])
-    else:
-        begin = datetime.fromtimestamp(0, timezone.utc)
-    if config['end']:
-        end = parse_generic_timestamp_string(config['end'])
-    else:
-        end = datetime.fromtimestamp(time.time(), timezone.utc)
-    return (begin, end)
-
-def are_in_equivalent_datetime_interval(
+def are_in_equivalent_interval(
     timestamp: datetime, interval_boundary: datetime, interval: str
 ) -> bool:
     """
@@ -84,3 +76,9 @@ def are_in_equivalent_datetime_interval(
         )
 
 
+if __name__ == "__main__":
+    print(f"test timestamps: {test_timestamps_hourly}")
+    print(f"test timestamps: {test_timestamps_daily}")
+    print(f"test timestamps: {test_timestamps_weekly}")
+    print(f"test timestamps: {test_timestamps_monthly}")
+    print(f"test timestamps: {test_timestamps_all}")
