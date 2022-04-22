@@ -11,6 +11,9 @@ from msbhosts import assemble_hosts
 from msbtimes import parse_begin_end
 from scp import copy_remote_datafile
 
+# TODO
+# - add --ip option to retrieve directly via a user provided ip address
+
 
 def parse_validate_cmdline() -> dict:
     cmd_parser = argparse.ArgumentParser()

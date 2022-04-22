@@ -6,6 +6,10 @@ import sys
 
 from msbdata import read_parse_msblogfile, decompose_logfile_stream, validate_fpaths, gen_input_files
 
+# TODO
+# - check of output file exists and skip file of --overwrite has not been set
+# - use multiprocessing to process several files at once
+
 def parse_cmdline() -> dict:
     args = argparse.ArgumentParser()
     args.add_argument("input", nargs="+", default=(None if sys.stdin.isatty() else sys.stdin), help="input files to be processed. can either be stdin or a list of files")
