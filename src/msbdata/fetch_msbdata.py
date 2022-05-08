@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 from config import REMOTE_SERVER, MSB_LIST, MSB_LOCAL_DATA_DIR
 from datetime import datetime, timezone
@@ -6,10 +8,13 @@ import os
 import sys
 import time
 
-from msbdata import fetch_remote_datafile_paths, extract_datetime_fpath
+from msbdata import fetch_remote_datafile_paths, extract_timestamp_fpath
 from msbhosts import assemble_hosts
 from msbtimes import parse_begin_end
 from scp import copy_remote_datafile
+
+# TODO
+# - add --ip option to retrieve directly via a user provided ip address
 
 
 def parse_validate_cmdline() -> dict:

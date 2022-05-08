@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 from glob import glob
 import json
@@ -5,6 +7,10 @@ import os
 import sys
 
 from msbdata import read_parse_msblogfile, decompose_logfile_stream, validate_fpaths, gen_input_files
+
+# TODO
+# - check of output file exists and skip file of --overwrite has not been set
+# - use multiprocessing to process several files at once
 
 def parse_cmdline() -> dict:
     args = argparse.ArgumentParser()
