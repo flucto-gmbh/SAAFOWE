@@ -24,7 +24,7 @@ def get_columns(filehandle) -> set:
 def get_data_by_column(filehandle, column):
     data = list()
     for m in filehandle.select(name=column):
-        data.append([m.analDate, m.values])
+        data.append([m.validDate, m.values])
     return pd.DataFrame(columns=["timestamp", column], data=data)
 
 
