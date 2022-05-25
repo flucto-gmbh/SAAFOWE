@@ -57,11 +57,11 @@ def estimate_damping(args: dict):
                 print(f"data has frequency of {fs}")
             timeseries = butter_lowpass_sosfiltfilt(data[component_key].to_numpy(), cutoff = args["filter_cutoff"], fs=fs)
             args['threshold'] = np.std(timeseries) * args['threshold_factor']
-            log_dec, zeta, peaks, decay = rdm(
+            zeta, log_dec, peaks, decay = rdm(
                 timeseries=timeseries,
                 config=args,
             )
-            print(log_dec, zeta)
+            print(f"log dec: {log_dec} zeta: {zeta}")
         if args['absolute_acceleration']:
             acc_abs = np.sqrt(
                 np.power(data[f"{args['acceleration_prefix']}x"], 2) 

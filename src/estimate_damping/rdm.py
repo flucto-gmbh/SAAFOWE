@@ -52,7 +52,12 @@ def find_peaks_decay_curve(
 
 
 def calc_log_dec(decay_curve: np.array, peaks: np.array):
-    return np.log(decay_curve[peaks[2]] / decay_curve[peaks[3]])
+    log_dec_mean = 0
+    for i in range(len(peaks)-1):
+        log_dec_mean += np.log(decay_curve[peaks[i]] / decay_curve[peaks[i+1]]) 
+    log_dec_mean /= len(peaks - 1)
+    return log_dec_mean
+    # return np.log(decay_curve[peaks[2]] / decay_curve[peaks[3]])
 
 
 def calc_zeta(log_dec: float) -> float:
