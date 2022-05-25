@@ -11,6 +11,7 @@ def parse_cmdline() -> dict:
     parser.add_argument("--num-samples", type=int, default=1000, help="number of samples used per signal section to calculate the decay curve")
     parser.add_argument("--peak-distance", type=int, default=None, help="minimum number of sample between two consecutive peaks")
     parser.add_argument("--peak-prominence", type=float, default=None, help="minimum peak prominence in the decay curve")
+    parser.add_argument("--filter-cutoff", type=float, default=1.0, help="cut off frequency of the low pass filter applied to the data")
     parser.add_argument("--acceleration-prefix", type=str, default='acc_')
     parser.add_argument("--absolute-acceleration", action="store_true")
     parser.add_argument("--plot-decay-curve", action="store_true")

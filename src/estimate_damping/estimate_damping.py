@@ -5,14 +5,13 @@ import pandas as pd
 import sys
 
 from cmdline import parse_cmdline
+from bfilter import butter_lowpass_sosfiltfilt
 from plot import plot_signal
 from rdm import rdm
 from testdata import damped_harmonic_signal
 
 # TODO
 # - implement low pass filtering
-
-
 
 def gen_input_files(args: dict) -> iter:
     """
@@ -53,7 +52,11 @@ def estimate_damping(args: dict):
         data.set_index("epoch", inplace=True)
         for component in ["x", "y", "z"]:
             component_key = f"{args['acceleration_prefix']}{component}"
-            args['threshold'] = np.std(timeseries := data[component_key].to_numpy()) * args['threshold_factor']
+            fs = 1/(data.index[1] - data.index[0]).total_seconds()
+            if args['verbose']:
+                print(f"data has frequency of {fs}")
+            timeseries = butter_lowpass_sosfiltfilt(data[component_key].to_numpy(), cutoff = args["filter_cutoff"], fs=fs)
+            args['threshold'] = np.std(timeseries) * args['threshold_factor']
             log_dec, zeta, peaks, decay = rdm(
                 timeseries=timeseries,
                 config=args,
