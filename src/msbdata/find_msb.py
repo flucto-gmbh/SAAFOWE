@@ -12,9 +12,9 @@ import json
 import os
 import sys
 
-from config import MSB_LIST
+from config import MSB_LIST, CMD_GPSD_LAT_LON
 from msbhosts import assemble_hosts
-
+from ssh import ssh_exec
 
 def parse_validate_cmdline() -> dict:
     cmd_parser = argparse.ArgumentParser()
@@ -22,7 +22,7 @@ def parse_validate_cmdline() -> dict:
     cmd_parser.add_argument(
         "--ip",
         action="store_true",
-        help="print ip address of remote motion sensor box",
+        help="print local ip address of remote motion sensor box",
         default=False,
     )
     cmd_parser.add_argument(
@@ -43,7 +43,6 @@ def parse_validate_cmdline() -> dict:
         help="print google maps link to display current location of motion sensor box",
         default=False,
     )
-
     cmd_parser.add_argument(
         "-r",
         "--remote",
@@ -62,7 +61,14 @@ def find_msb(config: dict):
     for host, access in assemble_hosts(
         config["msb"], remote=config["remote"], verbose=config["verbose"]
     ):
-        print(host, access)
+        print(host, access, end="")
+        if config['gps']:
+            lat, lon = ssh_exec(access, cmd=CMD_GPSD_LAT_LON).split(',')
+            if config['maps']:
+                print(f" https://www.google.com/maps/search/?api=1&query={lat},{lon}", end="")
+            else:
+                print(f" latitude: {lat} longitude: {lon}", end="")
+        print("")
 
 
 if __name__ == "__main__":
