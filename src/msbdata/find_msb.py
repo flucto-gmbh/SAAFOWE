@@ -5,7 +5,6 @@
 # - implement --network-ssid to print local network ssid
 # - implement --msb to find a specific motion sensor box
 # - implement --location to get gps location
-# - implement --maps to print a valid google maps link to display current location
 
 import argparse
 import json
@@ -63,13 +62,15 @@ def find_msb(config: dict):
     ):
         print(host, access, end="")
         if config['gps']:
-            lat, lon = ssh_exec(access, cmd=CMD_GPSD_LAT_LON).split(',')
-            if config['maps']:
-                print(f" https://www.google.com/maps/search/?api=1&query={lat},{lon}", end="")
+            if ssh_response := ssh_exec(access, cmd=CMD_GPSD_LAT_LON):
+                lat, lon = ssh_response.replace('\n', '').split(',')
+                if config['maps']:
+                    print(f" https://www.google.com/maps/search/?api=1&query={lat},{lon}", end="")
+                else:
+                    print(f" latitude: {lat} longitude: {lon}", end="")
             else:
-                print(f" latitude: {lat} longitude: {lon}", end="")
+                print("print failed to retrieve gps latitude and longitude")
         print("")
-
 
 if __name__ == "__main__":
     config = parse_validate_cmdline()
